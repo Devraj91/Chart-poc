@@ -1,19 +1,18 @@
-import { Component, ViewEncapsulation, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import * as d3 from 'd3-selection';
 import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
 import * as d3Axis from "d3-axis";
 
-import { STATISTICS } from './data';
+import { STATISTICS } from '../data';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['../../node_modules/nvd3/build/nv.d3.css'],
-  encapsulation: ViewEncapsulation.None
+  selector: 'app-barchart',
+  templateUrl: './barchart.component.html',
+  styleUrls: ['./barchart.component.css']
 })
-export class AppComponent implements OnInit {
-  private width: number;
+export class BarchartComponent implements OnInit {
+private width: number;
   private height: number;
   private margin = {top: 20, right: 20, bottom: 30, left: 40};
 
@@ -25,7 +24,7 @@ export class AppComponent implements OnInit {
   constructor() {}
 
   ngOnInit() {
-    this.initSvg();
+    this.initSvg()
     this.initAxis();
     this.drawAxis();
     this.drawBars();
@@ -42,8 +41,8 @@ export class AppComponent implements OnInit {
   private initAxis() {
     this.x = d3Scale.scaleBand().rangeRound([0, this.width]).padding(0.1);
     this.y = d3Scale.scaleLinear().rangeRound([this.height, 0]);
-    this.x.domain(STATISTICS.map((d) => d.x));
-    this.y.domain([0, d3Array.max(STATISTICS, (d) => d.y)]);
+    this.x.domain(STATISTICS.map((d) => d.letter));
+    this.y.domain([0, d3Array.max(STATISTICS, (d) => d.frequency)]);
   }
 
   private drawAxis() {
@@ -60,7 +59,7 @@ export class AppComponent implements OnInit {
           .attr("y", 6)
           .attr("dy", "0.71em")
           .attr("text-anchor", "end")
-          .text("y");
+          .text("Frequency");
   }
 
   private drawBars() {
@@ -68,10 +67,11 @@ export class AppComponent implements OnInit {
           .data(STATISTICS)
           .enter().append("rect")
           .attr("class", "bar")
-          .attr("x", (d) => this.x(d.x) )
-          .attr("y", (d) => this.y(d.y) )
+          .attr("x", (d) => this.x(d.letter) )
+          .attr("y", (d) => this.y(d.frequency) )
           .attr("width", this.x.bandwidth())
-          .attr("height", (d) => this.height - this.y(d.y) );
+          .attr("height", (d) => this.height - this.y(d.frequency) );
   }
-}
 
+
+}
