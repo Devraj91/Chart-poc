@@ -5,6 +5,8 @@ import * as d3Array from 'd3-array';
 import * as d3Axis from 'd3-axis';
 
 import { STATISTICS, STATS } from './data';
+// import { $ } from 'protractor/built';
+import * as $ from 'jquery';
 
 @Component({
   selector: 'app-root',
@@ -16,20 +18,51 @@ export class AppComponent implements OnInit {
   // private width: number;
   // private height: number;
   // private margin = {top: 20, right: 20, bottom: 30, left: 40};
-
+  groupChart: any;
   // private x: any;
   // private y: any;
   // private svg: any;
   // private g: any;
 
+   groupChartData = [{ '2614': 8, '4449': 15, 'over': 1 },
+   { '2614': 7, '4449': 2, 'over': 2 },
+   { '2614': 4, '4449': 5, 'over': 3 },
+   { '2614': 19, '4449': 8, 'over': 4 },
+   { '2614': 3, '4449': 7, 'over': 5 },
+   { '2614': 6, '4449': 1, 'over': 6 },
+   { '2614': 7, '4449': 6, 'over': 7 },
+   { '2614': 13, '4449': 2, 'over': 8 },
+   { '2614': 1, '4449': 8, 'over': 9 },
+   { '2614': 8, '4449': 9, 'over': 10 }];
+
+   columnsInfo = { '2614': 'Team A', '4449': 'Team B' };
+
+     barChartConfig = {
+      mainDiv: '#chart',
+      colorRange: ['#2a98cd', '#df7247'],
+      data: this.groupChartData,
+      columnsInfo: this.columnsInfo,
+      xAxis: 'over',
+      yAxis: 'runs',
+      label: {
+        xAxis: 'Over',
+        yAxis: 'Runs'
+      },
+      requireLegend: true
+    };
+
+
+
   constructor() {}
 
   ngOnInit() {
+
+    this.groupBarChart(this.barChartConfig);
     // this.initSvg();
     // this.initAxis();
     // this.drawAxis();
     // this.drawBars();
-     this.multiBarChart();
+    //  this.multiBarChart();
   }
 
   // private initSvg() {
@@ -74,110 +107,156 @@ export class AppComponent implements OnInit {
   //         .attr('width', this.x.bandwidth())
   //         .attr('height', (d) => this.height - this.y(d.y) );
   // }
+groupBarChart(config) {
+
+      this.drawgroupBarChartChart(config);
+      this.setReSizeEvent(config);
+    }
+
+    setReSizeEvent(data) {
+        let resizeTimer;
+        const interval = 500;
+        window.removeEventListener('resize', function () {
+        });
+        window.addEventListener('resize', function (event) {
+
+          if (resizeTimer !== false) {
+            clearTimeout(resizeTimer);
+          }
+          resizeTimer = setTimeout(function () {
+            $(data.mainDiv).empty();
+            this.drawgroupBarChartChart(data);
+            clearTimeout(resizeTimer);
+          }, interval);
+        });
+      }
+
+      drawgroupBarChartChart(config) {
+      const data = config.data;
+      let columnsInfo = config.columnsInfo;
+      const xAxis = config.xAxis;
+      const yAxis = config.yAxis;
+      const colorRange = config.colorRange;
+      const mainDiv = config.mainDiv;
+      const mainDivName = mainDiv.substr(1, mainDiv.length);
+      const label = config.label;
+      const requireLegend = config.requireLegend;
+      d3.select(mainDiv).append('svg').attr('width', $(mainDiv).width()).attr('height', $(mainDiv).height()*0.9);
+      const svg = d3.select(mainDiv + ' svg'),
+        margin = { top: 20, right: 20, bottom: 30, left: 40 },
+        width = +svg.attr('width') - margin.left - margin.right,
+        height = +svg.attr('height') - margin.top - margin.bottom;
+
+      const g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+      if (requireLegend != null && requireLegend !== undefined && requireLegend !== false) {
+        $('#Legend_' + mainDivName).remove();
+        this.creategroupBarChartLegend(mainDiv, columnsInfo, colorRange);
+      }
+
+      let x0 = d3Scale.scaleBand()
+        .rangeRound([0, width])
+        .paddingInner(0.1);
+
+      const x1 = d3Scale.scaleBand()
+        .padding(0.05);
+
+      const y = d3Scale.scaleLinear()
+        .rangeRound([height, 0]);
+
+      const z = d3Scale.scaleOrdinal()
+        .range(colorRange);
+
+      const keys = Object.keys(columnsInfo);
+      x0.domain(data.map(function (d) {
+        return d[xAxis];
+      }));
+      x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+      y.domain([0, d3.max(data, function (d) {
+        return d3.max(keys, function (key) {
+          return d[key];
+        });
+      })]).nice();
+
+      const element = g.append("g")
+        .selectAll("g")
+        .data(data)
+        .enter().append("g")
+        .attr("transform", function (d) {
+          return "translate(" + x0(d[xAxis]) + ",0)";
+        });
+
+      const rect = element.selectAll("rect")
+        .data(function (d, i) {
+          return keys.map(function (key) {
+            return { key: key, value: d[key], index: key + "_" + i + "_" + d[xAxis] };
+          });
+        })
+        .enter().append("rect")
+        .attr("x", function (d) {
+          return x1(d.key);
+        })
+        .attr("y", function (d) {
+          return y(d.value);
+        })
+        .attr("width", x1.bandwidth())
+        .attr("data-index", function (d, i) {
+          return d.index;
+        })
+        .attr("height", function (d) {
+          return height - y(d.value);
+        })
+        .attr("fill", (d) => (d.key) );
+
+      //   g.append("g")
+      //   .attr("class", "axis")
+      //   .attr("transform", "translate(0," + height + ")")
+      //   .call(d3Axis.axisBottom())
+      //   .append("text")
+      //   .attr("x", width / 2)
+      //   .attr("y", margin.bottom * 0.9)
+      //   .attr("dx", "0.32em")
+      //   .attr("fill", "#000")
+      //   .attr("font-weight", "bold")
+      //   .attr("text-anchor", "start")
+      //   .text(label.xAxis);
+
+      // g.append("g")
+      //   .attr("class", "axis")
+      //   .call(d3Axis.axisLeft(y).ticks(null, "s"))
+      //   .append("text")
+      //   .attr("x", 0)
+      //   .attr("y", 6)//y(y.ticks().pop()) + 0.5)
+      //   .attr("dy", "0.71em")
+      //   .attr("fill", "#000")
+      //   .attr("transform", "rotate(-90)")
+      //   .attr("font-weight", "bold")
+      //   // .attr("text-anchor", "start")
+      //   .text(label.yAxis);
+
+}
+
+     creategroupBarChartLegend(mainDiv, columnsInfo, colorRange) {
+      const z = d3Scale.scaleOrdinal()
+        .range(colorRange);
+      const mainDivName = mainDiv.substr(1, mainDiv.length);
+      $(mainDiv).before("<div id='Legend_" + mainDivName + "' class='pmd-card-body' style='margin-top:0; margin-bottom:0;'></div>");
+      const keys = Object.keys(columnsInfo);
+      keys.forEach(function (d) {
+        const cloloCode = z(d);
+        $("#Legend_" + mainDivName).append("<span class='team-graph team1' style='display: inline-block; margin-right:10px;'>\
+  			<span style='background:" + cloloCode + ";width: 10px;height: 10px;display: inline-block;vertical-align: middle;'>&nbsp;</span>\
+  			<span style='padding-top: 0;font-family:Source Sans Pro, sans-serif;font-size: 13px;display: inline;'>" + columnsInfo[d] + " </span>\
+  		</span>");
+      });
+
+    }
 
 
-
-multiBarChart() {
-const data = [
-  {
-    'Groups': 'A170',
-    'Level 1': 1,
-    'Level 2': 22,
-    'Level 3': 22,
-    'Level 4': 1
-  },
-  {
-    'Groups': 'A220',
-    'Level 1': 2,
-    'Level 2': 1,
-    'Level 3': 1,
-    'Level 4': 1
-  },
-  {
-    'Groups': 'A240',
-    'Level 1': 6,
-    'Level 2': 11,
-    'Level 3': 18,
-    'Level 4': 13
-  }];
-
-
-  const margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
-
-const x0 = d3.scale.ordinal()
-    .rangeRoundBands([0, width], .1);
-
-const x1 = d3.scale.ordinal();
-
-const y = d3.scale.linear()
-    .range([height, 0]);
-
-const color = d3.scale.ordinal()
-    .range(['#C4F0FF', '#E8D1FF' , '#FFC4C4', '#F6FFC4']);
-
-const xAxis = d3.svg.axis()
-    .scale(x0)
-    .orient('bottom');
-
-const yAxis = d3.svg.axis()
-    .scale(y)
-    .orient('left')
-    .tickFormat(d3.format('.2s'));
-
-const svg = d3.select('body').append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-
-const ageNames = d3.keys(data[0]).filter(function(key) { return key !== 'Groups'; });
-
-console.log('data', x0);
-
-data.forEach(function(d: any) {
-    d.ages = ageNames.map(function(name) { return {name: name, value: +d[name]}; });
-    });
-
-    console.log('data', data);
-
-  x0.domain(data.map(function(d) { return d.Groups; }));
-  x1.domain(ageNames).rangeRoundBands([0, x0.rangeBand()]);
-  // y.domain([0, d3.max(data, function(d: any) { return d3.max(d.ages, function(d: any) { return d.value; }); })]);
-
-  svg.append('g')
-      .attr('class', 'x axis')
-      .attr('transform', 'translate(0,' + height + ')')
-      .call(xAxis);
-
-  svg.append('g')
-      .attr('class', 'y axis')
-      .call(yAxis)
-      .append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', 6)
-      .attr('dy', '.71em')
-      .style('text-anchor', 'end')
-      .text('Population');
-
-  const state = svg.selectAll('.groups')
-      .data(data)
-      .enter().append('g')
-      .attr('class', 'groups')
-      .attr('transform', function(d) { return 'translate(' + x0(d.Groups) + ',0)'; });
-
-  // state.selectAll('rect')
-  //     .data(function(d) { return d.ages; })
-  //     .enter().append('rect')
-  //     .attr('width', x1.rangeBand())
-  //     .attr('x', function(d: any) { return x1(d.name); })
-  //     .attr('y', function(d) { return y(d.value); })
-  //     .attr('height', function(d) { return height - y(d.value); })
-  //     .style('fill', function(d) { return color(d.name); });
 
 
 }
 
-}
+
+
 
